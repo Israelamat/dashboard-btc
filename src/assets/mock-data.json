@@ -1,0 +1,24 @@
+{
+  "date": "2026-09-25",
+  "btc_price": 65000.25,
+  "ema_200": 60000.0,
+  "rsi_14": 45.2,
+  "fear_greed": 55,
+  "m2_yoy": 3.4,
+  "sp500": 5800.12,
+  "nasdaq": 18500.5,
+  "dxy": "bearish",
+  "macd_hist": 12.3,
+  "google_trends": 45,
+  "total_score": 72,
+  "zone": "High accumulation zone",
+  "components": {
+    "google_trends": 55.0,
+    "macd": 61.2,
+    "dxy": 100.0,
+    "m2": 42.5,
+    "ema_200": 50.0,
+    "fear_greed": 45.0,
+    "rsi": 62.0
+  }
+}

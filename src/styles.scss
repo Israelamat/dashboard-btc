@@ -1,0 +1,66 @@
+@use '@angular/material' as mat;
+
+@include mat.core();
+
+html {
+  color-scheme: dark;
+
+  // Zonas del score de acumulación (alto = mejor para comprar)
+  --zone-high: #22c55e;
+  --zone-moderate: #f59e0b;
+  --zone-neutral: #94a3b8;
+  --zone-selling: #ef4444;
+
+  // Paleta global del dashboard
+  --bg: #070b14;
+  --surface: #101828;
+  --surface-2: #1a2437;
+  --border: rgba(148, 163, 184, 0.14);
+  --text-primary: #e6edf7;
+  --text-secondary: #94a3b8;
+  --btc-orange: #f7931a;
+
+  @include mat.theme(
+    (
+      color: (
+        theme-type: dark,
+        primary: mat.$green-palette,
+        tertiary: mat.$blue-palette,
+      ),
+      typography: (
+        plain-family: (Roboto, system-ui, -apple-system, 'Segoe UI', sans-serif),
+        brand-family: (Roboto, system-ui, -apple-system, 'Segoe UI', sans-serif),
+      ),
+      density: 0,
+    )
+  );
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(247, 147, 26, 0.09), transparent 60%),
+    radial-gradient(1000px 520px at 95% 0%, rgba(34, 197, 94, 0.07), transparent 55%),
+    var(--bg);
+  color: var(--text-primary);
+  font-family: Roboto, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+// Presentar números alineados en tablas/tiles
+.num,
+.mat-card-header-text {
+  font-variant-numeric: tabular-nums;
+}
