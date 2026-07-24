@@ -1,59 +1,62 @@
-# DashboardBtc
+# dashboard-btc — Dashboard de análisis de acumulación de Bitcoin
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.0.1.
+Frontend Angular (standalone components + signals) que muestra el "score de
+acumulación de BTC" (0-100) calculado a partir de señales de mercado.
 
-## Development server
+> **Estado actual:** datos de ejemplo. Se carga el JSON estático desde
+> `src/assets/mock-data.json` simulando latencia de red (`delay(300)`).
+> Cuando exista el backend basta con cambiar una línea en
+> `FinancialDataService` para consumir `GET /api/financial-data`.
 
-To start a local development server, run:
+## Requisitos
 
-```bash
-ng serve
-```
+- Node.js 20+ (testeado con 22)
+- pnpm (el proyecto usa `pnpm` como package manager)
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## Comandos
 
 ```bash
-ng generate --help
+pnpm install        # instalar dependencias
+pnpm start          # ng serve → http://localhost:4200
+pnpm build          # build de producción en dist/
+pnpm test           # tests (vitest)
 ```
 
-## Building
+## Stack
 
-To build the project run:
+- Angular 21 (standalone components, signals, control flow `@if/@for`)
+- Angular Material 21 (tema oscuro M3)
+- Chart.js 4 + ng2-charts 10 (gráfico horizontal de las 7 señales)
+- Diseño responsive, mobile-first
 
-```bash
-ng build
+## Estructura principal
+
+```
+src/
+  assets/mock-data.json                  # JSON de ejemplo que consume el frontend
+  styles.scss                            # Tema oscuro Material + variables globales
+  app/
+    models/btc-report.model.ts           # Interfaces tipadas: BtcReport, ReportComponents, ...
+    core/accumulation-logic.ts           # Reglas puras: zona/acción/ratio + orden de señales
+    services/financial-data.service.ts   # HttpClient; carga mock por ahora (con delay)
+    pages/dashboard/                     # Vista principal (loading / error+retry / data)
+    components/
+      score-gauge/                       # Gauge circular SVG del score total
+      buy-panel/                         # "Posible Compra" + monto mensual configurable
+      components-card/                   # Chart horizontal + top-3 señales
+      metrics-grid/                      # Grilla de métricas secundarias
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+## Cambio al backend real
 
-## Running unit tests
+En `src/app/services/financial-data.service.ts`:
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+```ts
+// Reemplazar estas líneas:
+return this.http.get<BtcReport>(this.mockUrl).pipe(delay(this.mockNetworkDelayMs));
 
-```bash
-ng test
+// Por:
+return this.http.get<BtcReport>(this.apiUrl);
 ```
 
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+(la constante `apiUrl` ya está comentada en el servicio)
