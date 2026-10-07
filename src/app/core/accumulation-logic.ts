@@ -1,4 +1,5 @@
 import { ComponentKey, COMPONENT_META, ReportComponent, ReportComponents } from '../models/btc-report.model';
+import { ScoreSnapshot } from '../api/api.types';
 
 /**
  * Lógica de zona/acción/ratio. Funciones puras y tipadas, sin dependencia
@@ -59,6 +60,20 @@ export function resolveZone(score: number): ZoneInfo {
   if (score >= 50) return ZONES[1];
   if (score >= 30) return ZONES[2];
   return ZONES[3];
+}
+
+/**
+ * Arma el ZoneInfo a partir del snapshot del server: colores/resúmenes locales
+ * indexados por el string exacto de zona, y action/ratio tal como los calcula
+ * el backend (el server manda; si algo falta se cae a resolveZone(score)).
+ */
+export function zoneInfoFor(report: ScoreSnapshot): ZoneInfo {
+  const base = ZONES.find((z) => z.label === report.zone) ?? resolveZone(report.total_score);
+  return {
+    ...base,
+    action: report.action?.trim() ? report.action : base.action,
+    ratio: Number.isFinite(report.ratio) ? report.ratio : base.ratio,
+  };
 }
 
 /**

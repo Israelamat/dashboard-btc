@@ -1,51 +1,13 @@
 /**
- * Modelo de datos del reporte de acumulación de BTC.
- * Contrato de la futura API REST (GET /api/financial-data).
- * Mientras no exista backend, se carga el JSON estático de
- * src/assets/mock-data.json.
+ * Metadatos de UI de las señales que componen el score.
+ * El contrato de datos vive en src/app/api/api.types.ts (derivado de
+ * GET /openapi.json); acá sólo quedan label/tag/description para la vista.
  */
 
-/** Tendencia del índice dólar (DXY): dólar débil = mejor para acumular. */
-export type DxyTrend = 'bearish' | 'bullish' | 'neutral';
+import { ComponentKey } from '../api/api.types';
 
-/** Claves posibles del mapa `components` (siempre presentes en el JSON). */
-export type ComponentKey =
-  | 'google_trends'
-  | 'macd'
-  | 'dxy'
-  | 'm2'
-  | 'ema_200'
-  | 'fear_greed'
-  | 'rsi';
+export type { ComponentKey, DxyTrend, ReportComponents, ScoreSnapshot } from '../api/api.types';
 
-/** Mapa de scores por componente, tal y como llega en el JSON. */
-export interface ReportComponents {
-  google_trends: number;
-  macd: number;
-  dxy: number;
-  m2: number;
-  ema_200: number;
-  fear_greed: number;
-  rsi: number;
-}
-
-/** Reporte completo del análisis. */
-export interface BtcReport {
-  date: string;
-  btc_price: number;
-  ema_200: number;
-  rsi_14: number;
-  fear_greed: number;
-  m2_yoy: number;
-  sp500: number;
-  nasdaq: number;
-  dxy: DxyTrend;
-  macd_hist: number;
-  google_trends: number;
-  total_score: number;
-  zone: string;
-  components: ReportComponents;
-}
 
 /** Metadatos por componente (semántica de cada señal para la UI). */
 export interface ComponentMeta {

@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 
-import { BtcReport, DxyTrend } from '../../models/btc-report.model';
+import { DxyTrend, ScoreSnapshot } from '../../api/api.types';
 
 interface MetricTile {
   label: string;
@@ -160,15 +160,18 @@ function dxyColor(trend: DxyTrend): string {
   `,
 })
 export class MetricsGridComponent {
-  readonly report = input.required<BtcReport>();
+  readonly report = input.required<ScoreSnapshot>();
 
   readonly tiles = computed<MetricTile[]>(() => {
     const r = this.report();
     const belowEma = r.btc_price < r.ema_200;
     const emaPct = ((r.btc_price / r.ema_200 - 1) * 100).toFixed(1);
+    const sp500 = r.sp500 == null ? '—' : USD.format(r.sp500);
+    const nasdaq = r.nasdaq == null ? '—' : USD.format(r.nasdaq);
+    const missing = 'Sin dato disponible';
     return [
-      { label: 'S&P 500', value: USD.format(r.sp500), icon: 'show_chart' },
-      { label: 'NASDAQ', value: USD.format(r.nasdaq), icon: 'show_chart' },
+      { label: 'S&P 500', value: sp500, detail: r.sp500 == null ? missing : undefined, icon: 'show_chart' },
+      { label: 'NASDAQ', value: nasdaq, detail: r.nasdaq == null ? missing : undefined, icon: 'show_chart' },
       {
         label: 'RSI-14',
         value: NUM.format(r.rsi_14),

@@ -5,7 +5,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, TooltipItem } from 'chart.js';
 
-import { BtcReport, ReportComponent } from '../../models/btc-report.model';
+import { ReportComponent } from '../../models/btc-report.model';
+import { ScoreSnapshot } from '../../api/api.types';
 import { orderComponents, topComponents } from '../../core/accumulation-logic';
 
 @Component({
@@ -166,7 +167,7 @@ import { orderComponents, topComponents } from '../../core/accumulation-logic';
   `,
 })
 export class ComponentsCardComponent {
-  readonly report = input.required<BtcReport>();
+  readonly report = input.required<ScoreSnapshot>();
 
   readonly components = computed<ReportComponent[]>(() =>
     orderComponents(this.report().components),

@@ -6,8 +6,11 @@
       <p>Score de acumulación de Bitcoin basado en señales de mercado</p>
     </div>
   </div>
-  <span class="source-chip" title="El backend GET /api/financial-data aún no existe; se usa el JSON estático.">
-    Mock data
+  <span
+    class="source-chip"
+    title="GET /api/dashboard contra la API local (python -m src.api). El chip no se actualiza en vivo."
+  >
+    API local
   </span>
 </header>
 
@@ -17,10 +20,9 @@
 
 <footer class="footer">
   <p>
-    Datos de ejemplo estáticos desde
-    <code>assets/mock-data.json</code>
-    · La API
-    <code>GET /api/financial-data</code>
-    aún no está disponible.
+    Datos de la API local
+    <code>GET /api/dashboard</code>
+    · Docs en
+    <code>http://127.0.0.1:8000/docs</code>
   </p>
 </footer>

@@ -3,15 +3,16 @@
 Frontend Angular (standalone components + signals) que muestra el "score de
 acumulación de BTC" (0-100) calculado a partir de señales de mercado.
 
-> **Estado actual:** datos de ejemplo. Se carga el JSON estático desde
-> `src/assets/mock-data.json` simulando latencia de red (`delay(300)`).
-> Cuando exista el backend basta con cambiar una línea en
-> `FinancialDataService` para consumir `GET /api/financial-data`.
+> **Estado actual:** conectado a la API local. El dashboard llama a
+> `GET /api/dashboard?days=90` en `http://127.0.0.1:8000` (ver
+> `src/app/api/api.types.ts` para el contrato tipado) y el botón
+> "Actualizar datos" ejecuta `POST /api/refresh`.
 
 ## Requisitos
 
 - Node.js 20+ (testeado con 22)
 - pnpm (el proyecto usa `pnpm` como package manager)
+- API local corriendo: `python -m src.api` → http://127.0.0.1:8000
 
 ## Comandos
 
@@ -33,12 +34,12 @@ pnpm test           # tests (vitest)
 
 ```
 src/
-  assets/mock-data.json                  # JSON de ejemplo que consume el frontend
   styles.scss                            # Tema oscuro Material + variables globales
   app/
-    models/btc-report.model.ts           # Interfaces tipadas: BtcReport, ReportComponents, ...
+    api/api.types.ts                     # Contrato tipado de la API (dashboard, tablas, config…)
+    models/btc-report.model.ts           # Metadatos de UI: COMPONENT_META, ReportComponent
     core/accumulation-logic.ts           # Reglas puras: zona/acción/ratio + orden de señales
-    services/financial-data.service.ts   # HttpClient; carga mock por ahora (con delay)
+    services/financial-data.service.ts   # HttpClient contra la API (dashboard/refresh/tablas)
     pages/dashboard/                     # Vista principal (loading / error+retry / data)
     components/
       score-gauge/                       # Gauge circular SVG del score total
@@ -47,16 +48,14 @@ src/
       metrics-grid/                      # Grilla de métricas secundarias
 ```
 
-## Cambio al backend real
+## Conexión con la API
 
-En `src/app/services/financial-data.service.ts`:
-
-```ts
-// Reemplazar estas líneas:
-return this.http.get<BtcReport>(this.mockUrl).pipe(delay(this.mockNetworkDelayMs));
-
-// Por:
-return this.http.get<BtcReport>(this.apiUrl);
-```
-
-(la constante `apiUrl` ya está comentada en el servicio)
+- `FinancialDataService` (en `src/app/services/financial-data.service.ts`) expone
+  `getDashboard()`, `refresh()`, `getConfig()`, `getScoreHistory()` y
+  `getTable(source, query)` para los 11 endpoints.
+- La base URL es un `InjectionToken` (`API_BASE_URL`, defecto
+  `http://127.0.0.1:8000`); se puede sobreescribir con
+  `provideFactory(API_BASE_URL, () => 'http://otro-host:8000')`.
+- CORS ya permite los puertos 4200/4300, así que no hace falta proxy.
+- Los errores 422/503/500 se normalizan a `ApiError` con el `detail` del JSON,
+  que el dashboard muestra en pantalla.

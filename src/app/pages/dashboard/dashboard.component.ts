@@ -10,11 +10,11 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
-import { catchError, EMPTY } from 'rxjs';
+import { catchError, EMPTY, finalize } from 'rxjs';
 
-import { BtcReport } from '../../models/btc-report.model';
+import { DashboardResponse, RefreshFallbacks, ScoreSnapshot } from '../../api/api.types';
 import { FinancialDataService } from '../../services/financial-data.service';
-import { resolveZone, ZoneInfo } from '../../core/accumulation-logic';
+import { resolveZone, zoneInfoFor, ZoneInfo } from '../../core/accumulation-logic';
 import { ScoreGaugeComponent } from '../../components/score-gauge/score-gauge.component';
 import { BuyPanelComponent } from '../../components/buy-panel/buy-panel.component';
 import { ComponentsCardComponent } from '../../components/components-card/components-card.component';
@@ -23,7 +23,7 @@ import { MetricsGridComponent } from '../../components/metrics-grid/metrics-grid
 type LoadState =
   | { status: 'loading' }
   | { status: 'error'; message: string }
-  | { status: 'loaded'; data: BtcReport };
+  | { status: 'loaded'; data: DashboardResponse };
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -40,6 +40,24 @@ const USD = new Intl.NumberFormat('en-US', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
+
+const FALLBACK_LABELS: Record<keyof RefreshFallbacks, string> = {
+  google_trends_fallback: 'Google Trends',
+  stored_indicators: 'Indicadores (MACD)',
+  sp500: 'S&P 500',
+  nasdaq: 'NASDAQ',
+  m2: 'M2',
+};
+
+function pad(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+/** Marca local con el mismo formato que generated_at del server. */
+function nowStamp(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
 
 @Component({
   selector: 'app-dashboard',
@@ -71,36 +89,76 @@ const USD = new Intl.NumberFormat('en-US', {
             Reintentar
           </button>
         </mat-card>
-      } @else if (report(); as r) {
-        <div class="summary-row">
-          <mat-card class="summary">
-            <div class="summary-head">
-              <div class="summary-left">
-                <span class="kicker">Análisis del mercado · {{ formatDate(r.date) }}</span>
-                <div class="price-block">
-                  <span class="price num">{{ USD.format(r.btc_price) }}</span>
-                  <span class="ticker">BTC/USD</span>
+      } @else if (dashboard(); as d) {
+        @if (d.report; as r) {
+          <div class="summary-row">
+            <mat-card class="summary">
+              <div class="summary-head">
+                <div class="summary-left">
+                  <span class="kicker">Análisis del mercado · {{ formatDate(r.date) }}</span>
+                  <div class="price-block">
+                    <span class="price num">{{ USD.format(r.btc_price) }}</span>
+                    <span class="ticker">BTC/USD</span>
+                  </div>
+                  <span class="ema-note">EMA-200: {{ USD.format(r.ema_200) }}</span>
                 </div>
-                <span class="ema-note">EMA-200: {{ USD.format(r.ema_200) }}</span>
+                <div class="summary-right">
+                  <span class="zone-badge" [style.color]="zoneInfo().color">
+                    {{ zoneInfo().label }}
+                  </span>
+                  <button
+                    mat-stroked-button
+                    class="refresh-btn"
+                    [disabled]="refreshing()"
+                    (click)="refresh()"
+                  >
+                    <mat-icon inline [class.spinning]="refreshing()">
+                      {{ refreshing() ? 'progress_activity' : 'sync' }}
+                    </mat-icon>
+                    {{ refreshing() ? 'Actualizando… (10-15 s)' : 'Actualizar datos' }}
+                  </button>
+                </div>
               </div>
-              <span class="zone-badge" [style.color]="zoneInfo().color">
-                {{ zoneInfo().label }}
-              </span>
-            </div>
 
-            <app-score-gauge [score]="r.total_score" [color]="zoneInfo().color" />
+              @if (refreshError()) {
+                <p class="alert error">
+                  <mat-icon inline>warning</mat-icon>
+                  {{ refreshError() }}
+                </p>
+              }
+              @if (fallbacks().length) {
+                <p class="alert warn">
+                  <mat-icon inline>warning_amber</mat-icon>
+                  Datos por defecto en: {{ fallbackList() }}. Se reintentarán en la próxima
+                  actualización.
+                </p>
+              }
 
-            <p class="zone-summary">
-              <mat-icon inline>info</mat-icon>
-              {{ zoneInfo().summary }}
-            </p>
+              <app-score-gauge [score]="r.total_score" [color]="zoneInfo().color" />
+
+              <p class="zone-summary">
+                <mat-icon inline>info</mat-icon>
+                {{ zoneInfo().summary }}
+              </p>
+            </mat-card>
+
+            <app-buy-panel [zone]="zoneInfo()" />
+          </div>
+
+          <app-components-card [report]="r" />
+          <app-metrics-grid [report]="r" />
+
+          <p class="generated num">Generado {{ d.generated_at }} · {{ d.health.status }}</p>
+        } @else {
+          <mat-card class="state error">
+            <mat-icon color="warn">database</mat-icon>
+            <p>La API no tiene datos de BTC todavía. Ejecutá el pipeline (POST /api/refresh) e intentá de nuevo.</p>
+            <button mat-flat-button color="primary" [disabled]="refreshing()" (click)="refresh()">
+              <mat-icon inline>refresh</mat-icon>
+              Actualizar datos
+            </button>
           </mat-card>
-
-          <app-buy-panel [zone]="zoneInfo()" />
-        </div>
-
-        <app-components-card [report]="r" />
-        <app-metrics-grid [report]="r" />
+        }
       }
     </div>
   `,
@@ -127,6 +185,8 @@ const USD = new Intl.NumberFormat('en-US', {
     }
     .state p {
       margin: 0;
+      max-width: 520px;
+      line-height: 1.5;
     }
     .state.error mat-icon {
       font-size: 44px;
@@ -151,6 +211,49 @@ const USD = new Intl.NumberFormat('en-US', {
       justify-content: space-between;
       gap: 14px;
       flex-wrap: wrap;
+    }
+    .summary-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+    }
+    .refresh-btn {
+      white-space: nowrap;
+    }
+    .refresh-btn mat-icon.spinning {
+      animation: spin 1.2s linear infinite;
+    }
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    .alert {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 0.86rem;
+      line-height: 1.4;
+    }
+    .alert mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      flex: none;
+    }
+    .alert.error {
+      color: #fca5a5;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+    }
+    .alert.warn {
+      color: #fcd34d;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.35);
     }
     .kicker {
       color: var(--text-secondary);
@@ -202,9 +305,21 @@ const USD = new Intl.NumberFormat('en-US', {
       width: 18px;
       height: 18px;
     }
+    .generated {
+      margin: 0;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
     @media (max-width: 900px) {
       .summary-row {
         grid-template-columns: 1fr;
+      }
+      .summary-right {
+        align-items: flex-start;
+        width: 100%;
       }
     }
     @media (max-width: 480px) {
@@ -219,6 +334,8 @@ export class DashboardComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly state = signal<LoadState>({ status: 'loading' });
+  readonly refreshing = signal(false);
+  readonly refreshError = signal('');
 
   readonly isLoading = computed(() => this.state().status === 'loading');
 
@@ -227,13 +344,30 @@ export class DashboardComponent {
     return s.status === 'error' ? s.message : '';
   });
 
-  readonly report = computed<BtcReport | null>(() => {
+  readonly dashboard = computed<DashboardResponse | null>(() => {
     const s = this.state();
     return s.status === 'loaded' ? s.data : null;
   });
 
-  readonly zoneInfo = computed<ZoneInfo>(() =>
-    resolveZone(this.report()?.total_score ?? 0),
+  readonly report = computed<ScoreSnapshot | null>(() => this.dashboard()?.report ?? null);
+
+  /** Zona/acción/ratio según el server; fallback al score si el reporte es null. */
+  readonly zoneInfo = computed<ZoneInfo>(() => {
+    const r = this.report();
+    return r ? zoneInfoFor(r) : resolveZone(0);
+  });
+
+  /** Fuentes donde el último refresh usó un valor neutral (avisar al usuario). */
+  readonly fallbacks = computed<(keyof RefreshFallbacks)[]>(() => {
+    const f = this.report()?.fallbacks;
+    if (!f) return [];
+    return (Object.keys(FALLBACK_LABELS) as (keyof RefreshFallbacks)[]).filter((k) => f[k]);
+  });
+
+  readonly fallbackList = computed(() =>
+    this.fallbacks()
+      .map((k) => FALLBACK_LABELS[k])
+      .join(', '),
   );
 
   constructor() {
@@ -241,18 +375,13 @@ export class DashboardComponent {
   }
 
   load(): void {
-    // Único lugar que toca el servicio: aquí se verá la latencia simulada
-    // y el error real cuando exista el backend.
     this.state.set({ status: 'loading' });
+    this.refreshError.set('');
     const sub = this.service
-      .getFinancialData()
+      .getDashboard(90)
       .pipe(
-        catchError((err: { message?: string }) => {
-          this.state.set({
-            status: 'error',
-            message:
-              err?.message ?? 'No se pudo cargar el reporte. Verificá la conexión e intentá de nuevo.',
-          });
+        catchError((err: Error) => {
+          this.state.set({ status: 'error', message: err.message });
           return EMPTY;
         }),
       )
@@ -262,6 +391,31 @@ export class DashboardComponent {
 
   retry(): void {
     this.load();
+  }
+
+  /** POST /api/refresh: corre el pipeline completo (~7-15 s) y actualiza el reporte. */
+  refresh(): void {
+    if (this.refreshing()) return;
+    this.refreshError.set('');
+    this.refreshing.set(true);
+    const sub = this.service
+      .refresh()
+      .pipe(finalize(() => this.refreshing.set(false)))
+      .subscribe({
+        next: (report) => {
+          const s = this.state();
+          if (s.status === 'loaded') {
+            this.state.set({
+              status: 'loaded',
+              data: { ...s.data, report, generated_at: nowStamp() },
+            });
+          } else {
+            this.load();
+          }
+        },
+        error: (err: Error) => this.refreshError.set(err.message),
+      });
+    this.destroyRef.onDestroy(() => sub.unsubscribe());
   }
 
   protected readonly formatDate = formatDate;
