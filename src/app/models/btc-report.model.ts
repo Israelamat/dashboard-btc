@@ -1,31 +1,17 @@
-/**
- * Metadatos de UI de las señales que componen el score.
- * El contrato de datos vive en src/app/api/api.types.ts (derivado de
- * GET /openapi.json); acá sólo quedan label/tag/description para la vista.
- */
-
 import { ComponentKey } from '../api/api.types';
 
 export type { ComponentKey, DxyTrend, ReportComponents, ScoreSnapshot } from '../api/api.types';
 
 
-/** Metadatos por componente (semántica de cada señal para la UI). */
 export interface ComponentMeta {
   label: string;
-  /** Peso en el score total. */
   weight: number;
-  /** Etiqueta corta de la señal. */
   tag: string;
-  /** Descripción de qué significa el valor alto. */
   description: string;
-  /** true = señal contrarian (valores altos vienen de condiciones "malas" para el mercado). */
+  /** true = contrarian signal (high value comes from "bad" market conditions). */
   contrarian: boolean;
 }
 
-/**
- * Entrada enriquecida de un componente: clave + valor del reporte + metadatos.
- * Resultado de mapear `ReportComponents` contra `COMPONENT_META`.
- */
 export interface ReportComponent {
   key: ComponentKey;
   label: string;
@@ -36,7 +22,6 @@ export interface ReportComponent {
   contrarian: boolean;
 }
 
-/** Metadatos estáticos de las 7 señales que componen el score. */
 export const COMPONENT_META: Readonly<Record<ComponentKey, ComponentMeta>> = {
   google_trends: {
     label: 'Google Trends',

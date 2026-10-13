@@ -1,20 +1,13 @@
 import { ComponentKey, COMPONENT_META, ReportComponent, ReportComponents } from '../models/btc-report.model';
 import { ScoreSnapshot } from '../api/api.types';
 
-/**
- * Lógica de zona/acción/ratio. Funciones puras y tipadas, sin dependencia
- * de Angular: mismo output sirve para template, pipes o tests unitarios.
- */
-
 export type ZoneKey = 'HIGH' | 'MODERATE' | 'NEUTRAL' | 'SELLING';
 
 export interface ZoneInfo {
   key: ZoneKey;
   label: string;
   action: string;
-  /** Fracción (0..1) del monto mensual a invertir "ahora". */
   ratio: number;
-  /** Color CSS de la zona (variable del tema). */
   color: string;
   summary: string;
 }
@@ -54,7 +47,6 @@ const ZONES: ReadonlyArray<ZoneInfo> = [
   },
 ];
 
-/** Resuelve zona/acción/ratio a partir del score total (0-100). */
 export function resolveZone(score: number): ZoneInfo {
   if (score >= 70) return ZONES[0];
   if (score >= 50) return ZONES[1];
@@ -62,11 +54,6 @@ export function resolveZone(score: number): ZoneInfo {
   return ZONES[3];
 }
 
-/**
- * Arma el ZoneInfo a partir del snapshot del server: colores/resúmenes locales
- * indexados por el string exacto de zona, y action/ratio tal como los calcula
- * el backend (el server manda; si algo falta se cae a resolveZone(score)).
- */
 export function zoneInfoFor(report: ScoreSnapshot): ZoneInfo {
   const base = ZONES.find((z) => z.label === report.zone) ?? resolveZone(report.total_score);
   return {
@@ -76,10 +63,6 @@ export function zoneInfoFor(report: ScoreSnapshot): ZoneInfo {
   };
 }
 
-/**
- * Convierte el mapa `components` del reporte en una lista de
- * componentes enriquecidos, ordenada por valor descendente.
- */
 export function orderComponents(components: ReportComponents): ReportComponent[] {
   return (Object.keys(COMPONENT_META) as ComponentKey[])
     .map((key) => ({
@@ -94,7 +77,6 @@ export function orderComponents(components: ReportComponents): ReportComponent[]
     .sort((a, b) => b.value - a.value);
 }
 
-/** Top N señales más fuertes (mayor valor), por defecto 3. */
 export function topComponents(components: ReportComponents, n = 3): ReportComponent[] {
   return orderComponents(components).slice(0, n);
 }

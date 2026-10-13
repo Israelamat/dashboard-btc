@@ -53,7 +53,7 @@ function pad(n: number): string {
   return String(n).padStart(2, '0');
 }
 
-/** Marca local con el mismo formato que generated_at del server. */
+/** Local timestamp in the same format as the server's generated_at. */
 function nowStamp(): string {
   const d = new Date();
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
@@ -351,13 +351,11 @@ export class DashboardComponent {
 
   readonly report = computed<ScoreSnapshot | null>(() => this.dashboard()?.report ?? null);
 
-  /** Zona/acción/ratio según el server; fallback al score si el reporte es null. */
   readonly zoneInfo = computed<ZoneInfo>(() => {
     const r = this.report();
     return r ? zoneInfoFor(r) : resolveZone(0);
   });
 
-  /** Fuentes donde el último refresh usó un valor neutral (avisar al usuario). */
   readonly fallbacks = computed<(keyof RefreshFallbacks)[]>(() => {
     const f = this.report()?.fallbacks;
     if (!f) return [];
@@ -393,7 +391,6 @@ export class DashboardComponent {
     this.load();
   }
 
-  /** POST /api/refresh: corre el pipeline completo (~7-15 s) y actualiza el reporte. */
   refresh(): void {
     if (this.refreshing()) return;
     this.refreshError.set('');

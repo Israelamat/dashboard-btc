@@ -1,20 +1,14 @@
-/**
- * Contrato TypeScript de la API local (FastAPI en http://127.0.0.1:8000).
- * Derivado de la especificación de endpoints; si hay duda sobre un campo,
- * GET /openapi.json es la fuente de verdad (los response_model validan la salida).
- */
-
-/** Las 4 zonas exactas del server. Úsalas como claves de i18n/colores. */
+/** The 4 exact server zone strings. Use as i18n/color keys. */
 export type Zone =
   | 'High accumulation zone'
   | 'Moderate accumulation zone'
   | 'Neutral zone'
   | 'Selling zone';
 
-/** Tendencia del índice dólar (DXY): bearish = dólar débil. */
+/** DXY trend: bearish = weak dollar. */
 export type DxyTrend = 'bearish' | 'bullish' | 'neutral';
 
-/** Claves de los sub-scores (siempre las 7 en `components` y en `weights`). */
+/** Sub-score keys (always all 7 in `components` and `weights`). */
 export type ComponentKey =
   | 'google_trends'
   | 'macd'
@@ -24,17 +18,16 @@ export type ComponentKey =
   | 'fear_greed'
   | 'rsi';
 
-/** Mapa de sub-scores 0-100 (y también de pesos, que suman 1). */
+/** Sub-score map (0-100, and also weights, which sum to 1). */
 export type ReportComponents = Record<ComponentKey, number>;
 
-/** Metadatos de zona histórica del score (null si no hay historia suficiente). */
 export interface ZoneHistoryStats {
   n: number;
   mean: number;
   win: number;
 }
 
-/** Fallbacks aplicados por POST /api/refresh. true = se usó valor neutral. */
+/** Fallbacks applied by POST /api/refresh. true = a neutral value was used. */
 export interface RefreshFallbacks {
   google_trends_fallback: boolean;
   stored_indicators: boolean;
@@ -43,37 +36,28 @@ export interface RefreshFallbacks {
   m2: boolean;
 }
 
-/** Snapshot de score del día. Es el `report` del dashboard y la respuesta de /refresh. */
 export interface ScoreSnapshot {
   date: string;
   btc_price: number;
   ema_200: number;
   rsi_14: number;
-  /** int 0-100 */
   fear_greed: number;
-  /** % interanual */
   m2_yoy: number;
   sp500: number | null;
   nasdaq: number | null;
   dxy: DxyTrend;
   macd_hist: number;
-  /** 0-100 */
   google_trends: number;
-  /** int 0-100 */
   total_score: number;
   zone: Zone;
-  /** Sub-scores 0-100, las 7 claves siempre presentes. */
   components: ReportComponents;
-  /** Texto de acción del server, p. ej. "COMPRA NORMAL (DCA)". */
   action: string;
-  /** 0-1, fracción del aporte mensual a desplegar. */
+  /** 0-1 fraction of the monthly contribution to deploy. */
   ratio: number;
   zone_history: ZoneHistoryStats | null;
-  /** "stored" en dashboard; "stored" | "live" en refresh. */
+  /** "stored" in dashboard; "stored" | "live" in refresh. */
   source: 'stored' | 'live';
-  /** Solo en refresh. */
   latest_candle_date: string | null;
-  /** Solo en refresh (null en dashboard). */
   fallbacks: RefreshFallbacks | null;
 }
 
@@ -97,7 +81,6 @@ export interface ZoneCurrent {
   score_trend: ScoreTrend;
 }
 
-/** Racha de zona anterior (null si todavía no cambió de zona). */
 export interface PreviousZoneRun {
   zone: Zone;
   start: string;
@@ -114,7 +97,7 @@ export interface ThresholdNeighbor {
   headroom?: number;
 }
 
-/** Distancia a las zonas vecinas; up/down null en los extremos (High / Selling). */
+/** Distance to neighbor zones; up/down are null at the extremes (High / Selling). */
 export interface ZoneThresholds {
   score: number;
   zone: Zone;
@@ -128,7 +111,6 @@ export interface PriceContext {
   vs_ema_200_pct: number;
   ath: number;
   ath_date: string;
-  /** Negativo. */
   drawdown_from_ath_pct: number;
   percentile_365d: number;
   change_7d_pct: number;
@@ -163,20 +145,17 @@ export interface ZoneSample {
   episodes: number;
 }
 
-/** Bloque `zone` del dashboard (o null). */
 export interface ZoneContext {
   current: ZoneCurrent;
   previous: PreviousZoneRun | null;
   thresholds: ZoneThresholds;
   price_context: PriceContext | null;
-  /** Las 4 zonas siempre, aunque estén vacías. */
   distribution: ZoneDistributionRow[];
-  /** Últimos 8 cambios de zona, cronológicos. */
   transitions: ZoneTransition[];
   sample: ZoneSample;
 }
 
-/** Bloque `macro` del dashboard. Cada fuente trae su propio as_of. */
+/** Every source carries its own as_of. */
 export interface MacroBlock {
   as_of: string;
   fear_greed: { value: number; classification: string; history_start: string };
@@ -192,7 +171,7 @@ export interface MacroBlock {
 
 export interface ZoneRule {
   zone: Zone;
-  /** null en "Selling zone" (bucket -inf). */
+  /** null in "Selling zone" (bucket -inf). */
   min_score: number | null;
   action: string;
   ratio: number;
@@ -203,14 +182,12 @@ export interface ComponentConfig {
   weight: number;
   tag: string;
   description: string;
-  /** true = valor alto = señal a favor de comprar. */
   contrarian: boolean;
 }
 
-/** Bloque `config` del dashboard (= GET /api/config). */
 export interface ApiConfig {
   weights: ReportComponents;
-  /** Orden: High ≥70, Moderate ≥50, Neutral ≥30, Selling. */
+  /** Order: High >=70, Moderate >=50, Neutral >=30, Selling. */
   zones: ZoneRule[];
   actions: Record<Zone, { action: string; ratio: number }>;
   components: ComponentConfig[];
@@ -236,7 +213,7 @@ export interface DayRangeSample {
   days: number;
 }
 
-/** Bloque `backtest` del dashboard (TTL 5 min server-side). */
+/** Server-side TTL 5 min. */
 export interface Backtest {
   zones: BacktestZoneRow[];
   correlation: number;
@@ -271,18 +248,18 @@ export interface ScoreBin {
   win_rate: number;
 }
 
-/** Bloque `calibration` del dashboard (TTL 5 min server-side). */
+/** Server-side TTL 5 min. */
 export interface Calibration {
   horizon_days: number;
   sample: DayRangeSample;
-  /** Ordenado por correlación (mejor predictor primero). */
+  /** Sorted by correlation (best predictor first). */
   components: CalibrationComponent[];
   score_bins: ScoreBin[];
   total_score_pearson: number | null;
   note: string | null;
 }
 
-/** Bloque `health` del dashboard. status degraded = sin ningún score almacenado. */
+/** status degraded = no stored score at all. */
 export interface Health {
   status: 'ok' | 'degraded';
   database: string;
@@ -297,18 +274,17 @@ export interface DashboardHistoryRow {
   date: string;
   total_score: number;
   zone: Zone;
-  /** Puede ser null si falta vela ese día. */
+  /** Can be null if the candle is missing that day. */
   close: number | null;
 }
 
-/** Bloque `history` del dashboard. */
 export interface DashboardHistory {
   days: number;
   count: number;
   rows: DashboardHistoryRow[];
 }
 
-/** Respuesta de GET /api/dashboard (9 bloques). */
+/** Response of GET /api/dashboard (9 blocks). */
 export interface DashboardResponse {
   report: ScoreSnapshot | null;
   zone: ZoneContext | null;
@@ -318,14 +294,14 @@ export interface DashboardResponse {
   calibration: Calibration;
   health: Health;
   history: DashboardHistory;
-  /** "YYYY-MM-DD HH:MM:SS" del servidor. */
+  /** "YYYY-MM-DD HH:MM:SS" from the server. */
   generated_at: string;
 }
 
 /**
- * Error estándar de la API: {detail: string} (503/500).
- * Ojo: las validaciones de query de FastAPI (422) devuelven
- * detail como array de ítems {loc, msg, type}.
+ * Standard API error: {detail: string} (503/500).
+ * Note: FastAPI query validation (422) returns
+ * detail as an array of items {loc, msg, type}.
  */
 export interface ApiErrorItem {
   loc?: (string | number)[];
@@ -337,7 +313,6 @@ export interface ApiErrorBody {
   detail: string | ApiErrorItem[];
 }
 
-/** Índice GET / → rutas agrupadas por tag. */
 export interface ApiIndex {
   name: string;
   version: string;
@@ -346,9 +321,9 @@ export interface ApiIndex {
 }
 
 /* ------------------------------------------------------------------ */
-/* Los 7 endpoints de tablas (mismo contrato: limit/date/start/end).   */
-/* Filas de más antigua a más reciente, fecha YYYY-MM-DD.              */
-/* `total` = filas de la ventana antes del limit → paginar con ?end=   */
+/* The 7 table endpoints (same contract: limit/date/start/end).         */
+/* Rows from oldest to newest, date YYYY-MM-DD.                         */
+/* `total` = rows in the window before the limit -> paginate with ?end= */
 /* ------------------------------------------------------------------ */
 
 export type TableSource =
@@ -361,9 +336,9 @@ export type TableSource =
   | 'google-trends';
 
 export interface TableQuery {
-  /** 1-365, defecto 20. */
+  /** 1-365, default 20. */
   limit?: number;
-  /** YYYY-MM-DD (excluye start/end). */
+  /** YYYY-MM-DD (excludes start/end). */
   date?: string;
   /** YYYY-MM-DD. */
   start?: string;
@@ -378,9 +353,8 @@ export interface TableResponse<S extends TableSource = TableSource> {
   start: string | null;
   end: string | null;
   limit: number;
-  /** Filas devueltas. */
   count: number;
-  /** Filas de la ventana antes del limit. */
+  /** Rows in the window before the limit. */
   total: number;
   rows: TableRow<S>[];
 }
@@ -428,7 +402,7 @@ export interface FearGreedRow {
 export interface FredRow {
   date: string;
   value: number;
-  /** Siempre "M2SL". */
+  /** Always "M2SL". */
   series_id: string;
 }
 
@@ -436,18 +410,17 @@ export interface StocksRow {
   date: string;
   sp500: number;
   nasdaq: number;
-  /** Nivel (el trend está en metrics). */
+  /** Level (the trend lives in metrics). */
   dxy: number;
 }
 
 export interface GoogleTrendsRow {
   date: string;
   value: number;
-  /** Siempre "bitcoin". */
+  /** Always "bitcoin". */
   keyword: string;
 }
 
-/** Mapa fuente → fila, para tipar las respuestas de tabla. */
 export interface TableRowMap {
   scores: ScoresRow;
   klines: KlinesRow;
@@ -460,5 +433,4 @@ export interface TableRowMap {
 
 export type TableRow<S extends TableSource> = TableRowMap[S];
 
-/** Unión discriminada por `source` (para manejar todas las tablas juntas). */
 export type AnyTableResponse = { [S in TableSource]: TableResponse<S> }[TableSource];

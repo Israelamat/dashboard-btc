@@ -5,13 +5,11 @@
 html {
   color-scheme: dark;
 
-  // Zonas del score de acumulación (alto = mejor para comprar)
   --zone-high: #22c55e;
   --zone-moderate: #f59e0b;
   --zone-neutral: #94a3b8;
   --zone-selling: #ef4444;
 
-  // Paleta global del dashboard
   --bg: #070b14;
   --surface: #101828;
   --surface-2: #1a2437;
@@ -59,7 +57,6 @@ h3 {
   letter-spacing: -0.02em;
 }
 
-// Presentar números alineados en tablas/tiles
 .num,
 .mat-card-header-text {
   font-variant-numeric: tabular-nums;
