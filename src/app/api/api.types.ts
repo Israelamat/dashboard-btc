@@ -8,7 +8,7 @@ export type Zone =
 /** DXY trend: bearish = weak dollar. */
 export type DxyTrend = 'bearish' | 'bullish' | 'neutral';
 
-/** Sub-score keys (always all 7 in `components` and `weights`). */
+/** Sub-score keys (always all 9 in `components` and `weights`). */
 export type ComponentKey =
   | 'google_trends'
   | 'macd'
@@ -16,10 +16,18 @@ export type ComponentKey =
   | 'm2'
   | 'ema_200'
   | 'fear_greed'
-  | 'rsi';
+  | 'rsi'
+  | 'proxy_mvrv'
+  | 'proxy_nupl';
 
-/** Sub-score map (0-100, and also weights, which sum to 1). */
-export type ReportComponents = Record<ComponentKey, number>;
+/**
+ * Sub-score map (0-100). A value is `null` on days its source was
+ * unavailable; the total score renormalizes over the signals that do have one.
+ */
+export type ReportComponents = Record<ComponentKey, number | null>;
+
+/** Weight map (sums to 1). */
+export type ComponentWeights = Record<ComponentKey, number>;
 
 export interface ZoneHistoryStats {
   n: number;
@@ -51,6 +59,10 @@ export interface ScoreSnapshot {
   total_score: number;
   zone: Zone;
   components: ReportComponents;
+  /** Share of the signal weight that was available (0-1). */
+  coverage: number | null;
+  /** True when coverage is below the minimum and the zone was capped. */
+  low_confidence: boolean | null;
   action: string;
   /** 0-1 fraction of the monthly contribution to deploy. */
   ratio: number;
@@ -186,7 +198,7 @@ export interface ComponentConfig {
 }
 
 export interface ApiConfig {
-  weights: ReportComponents;
+  weights: ComponentWeights;
   /** Order: High >=70, Moderate >=50, Neutral >=30, Selling. */
   zones: ZoneRule[];
   actions: Record<Zone, { action: string; ratio: number }>;

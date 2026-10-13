@@ -1,8 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
-import { MatSliderModule } from '@angular/material/slider';
 import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
 
 import { ZoneInfo } from '../../core/accumulation-logic';
 
@@ -10,7 +8,7 @@ import { ZoneInfo } from '../../core/accumulation-logic';
   selector: 'app-buy-panel',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatCardModule, MatSliderModule, MatIconModule, MatButtonModule],
+  imports: [MatCardModule, MatIconModule],
   template: `
     <mat-card class="buy-card">
       <mat-card-header>
@@ -25,45 +23,38 @@ import { ZoneInfo } from '../../core/accumulation-logic';
 
       <mat-card-content>
         <div class="hero">
-          <span class="action">{{ zone().action }}</span>
-          <span class="percent num" [style.color]="zone().color">
-            {{ percent() }}%
-          </span>
-          <span class="amount num">
-            {{ formattedAmount() }}
-          </span>
-          <span class="of">de tu monto mensual</span>
+          <div class="hero-main">
+            <span class="action">{{ zone().action }}</span>
+            <span class="amount num" [style.color]="zone().color">{{ formattedAmount() }}</span>
+            <span class="of">de tu monto mensual</span>
+          </div>
+          <span class="percent num" [style.color]="zone().color">{{ percent() }}%</span>
         </div>
 
-        <div class="alloc" [style.--progress]="percent() + '%'">
-          <span class="alloc-track">
-            <span class="alloc-fill" [style.background]="zone().color"></span>
-          </span>
-          <span class="alloc-label">
-            {{ ratioLabel() }}
-          </span>
+        <div class="alloc-track">
+          <span
+            class="alloc-fill"
+            [style.width.%]="percent()"
+            [style.background]="zone().color"
+          ></span>
         </div>
-
-        <p class="summary">{{ zone().summary }}</p>
 
         <div class="monthly">
           <label for="monthly-amount">Monto mensual configurable</label>
-          <mat-slider
+          <input
             id="monthly-amount"
+            class="range"
+            type="range"
             min="100"
             max="10000"
             step="100"
-            class="slider"
-          >
-            <input
-              matSliderThumb
-              [value]="monthlyAmount()"
-              (input)="onAmountChange($event)"
-            />
-          </mat-slider>
+            [value]="monthlyAmount()"
+            [style.accent-color]="zone().color"
+            (input)="onAmountChange($event)"
+          />
           <div class="monthly-values num">
             <span>$100</span>
-            <span class="current num">{{ monthlyFormatted() }}</span>
+            <span class="current">{{ monthlyFormatted() }}</span>
             <span>$10,000</span>
           </div>
         </div>
@@ -83,82 +74,71 @@ import { ZoneInfo } from '../../core/accumulation-logic';
       gap: 8px;
     }
     .hero {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      grid-template-areas:
-        'action percent'
-        'amount amount'
-        'of of';
-      gap: 2px 12px;
-      align-items: baseline;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
       padding: 8px 0 12px;
     }
+    .hero-main {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
     .action {
-      grid-area: action;
       color: var(--text-secondary);
       font-size: 0.92rem;
     }
-    .percent {
-      grid-area: percent;
-      font-size: 2rem;
-      font-weight: 700;
-      letter-spacing: -0.03em;
-    }
     .amount {
-      grid-area: amount;
-      font-size: 2.4rem;
+      font-size: 2.2rem;
       font-weight: 700;
       letter-spacing: -0.03em;
+      line-height: 1.15;
     }
     .of {
-      grid-area: of;
       color: var(--text-secondary);
       font-size: 0.85rem;
     }
-    .alloc {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin: 10px 0 6px;
+    .percent {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      white-space: nowrap;
     }
     .alloc-track {
-      flex: 1;
+      display: block;
       height: 10px;
       border-radius: 999px;
       background: rgba(148, 163, 184, 0.18);
       overflow: hidden;
-      position: relative;
     }
     .alloc-fill {
       display: block;
       height: 100%;
-      width: var(--progress);
       border-radius: 999px;
       transition: width 0.4s ease, background 0.4s ease;
     }
-    .alloc-label {
-      color: var(--text-secondary);
-      font-size: 0.85rem;
-      white-space: nowrap;
-    }
-    .summary {
-      color: var(--text-secondary);
-      font-size: 0.9rem;
-      line-height: 1.45;
-      margin: 6px 0 16px;
+    .monthly {
+      margin-top: 16px;
     }
     .monthly label {
       display: block;
       color: var(--text-secondary);
       font-size: 0.95rem;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
+    }
+    .range {
+      display: block;
+      width: 100%;
+      margin: 0;
+      cursor: pointer;
     }
     .monthly-values {
       display: flex;
       justify-content: space-between;
       color: var(--text-secondary);
       font-size: 0.85rem;
-      margin-top: 2px;
+      margin-top: 6px;
     }
     .monthly-values .current {
       color: var(--text-primary);
@@ -178,14 +158,6 @@ export class BuyPanelComponent {
   readonly formattedAmount = computed(() => this.format(this.amountNow()));
 
   readonly monthlyFormatted = computed(() => this.format(this.monthlyAmount()));
-
-  readonly ratioLabel = computed(() =>
-    this.percent() === 100
-      ? `100% del monto`
-      : this.percent() === 0
-        ? 'Sin inversión esta ronda'
-        : `${this.percent()}% del monto ahora`,
-  );
 
   readonly currency = new Intl.NumberFormat('en-US', {
     style: 'currency',

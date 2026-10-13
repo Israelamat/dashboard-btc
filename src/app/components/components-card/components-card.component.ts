@@ -2,18 +2,16 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
-import { BaseChartDirective } from 'ng2-charts';
-import { ChartConfiguration, TooltipItem } from 'chart.js';
 
-import { ReportComponent } from '../../models/btc-report.model';
-import { ScoreSnapshot } from '../../api/api.types';
-import { orderComponents, topComponents } from '../../core/accumulation-logic';
+import { ComponentView } from '../../models/btc-report.model';
+import { ApiConfig, ScoreSnapshot } from '../../api/api.types';
+import { buildComponents, orderComponents, topComponents } from '../../core/accumulation-logic';
 
 @Component({
   selector: 'app-components-card',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatCardModule, MatChipsModule, MatIconModule, BaseChartDirective],
+  imports: [MatCardModule, MatChipsModule, MatIconModule],
   template: `
     <mat-card class="components-card">
       <mat-card-header>
@@ -36,28 +34,42 @@ import { orderComponents, topComponents } from '../../core/accumulation-logic';
             @for (c of top(); track c.key) {
               <mat-chip [class]="'rank-' + $index" highlighted>
                 <mat-icon matChipIcon inline>{{ icon($index) }}</mat-icon>
-                {{ c.label }} · {{ c.value.toFixed(0) }}
+                {{ c.label }} · {{ fmt(c.value) }}
               </mat-chip>
             }
           </mat-chip-set>
         </div>
 
-        <div class="chart-wrap">
-          <canvas baseChart type="bar" [data]="chartData()" [options]="chartOptions"></canvas>
-        </div>
+        @if (missing() > 0) {
+          <p class="note">
+            <mat-icon inline>info</mat-icon>
+            {{ missing() }} señal(es) sin dato hoy; el score se recalcula con las disponibles.
+          </p>
+        }
+        @if (report().low_confidence) {
+          <p class="note warn">
+            <mat-icon inline>warning</mat-icon>
+            Cobertura baja de señales: la zona puede estar limitada.
+          </p>
+        }
 
         <div class="list">
           @for (c of components(); track c.key) {
-            <div class="row" [class.strong]="$index < 3" [attr.title]="c.description">
+            <div
+              class="row"
+              [class.strong]="c.value != null && $index < 3"
+              [class.missing]="c.value == null"
+              [attr.title]="c.description"
+            >
               <span class="dot" [style.background]="barColor($index)"></span>
               <span class="name">
                 {{ c.label }}
                 <span class="tag">{{ c.tag }}</span>
               </span>
-              <div class="mini-bar" aria-hidden="true">
-                <span class="mini-fill" [style.width.%]="c.value" [style.background]="barColor($index)"></span>
-              </div>
-              <span class="value num">{{ c.value.toFixed(0) }}</span>
+              <span class="mini-bar" aria-hidden="true">
+                <span class="mini-fill" [style.width.%]="c.value ?? 0" [style.background]="barColor($index)"></span>
+              </span>
+              <span class="value num">{{ fmt(c.value) }}</span>
               <span class="weight">peso {{ (c.weight * 100).toFixed(0) }}%</span>
             </div>
           }
@@ -78,7 +90,7 @@ import { orderComponents, topComponents } from '../../core/accumulation-logic';
       display: flex;
       flex-direction: column;
       gap: 8px;
-      margin: 4px 0 12px;
+      margin: 4px 0 16px;
     }
     .top-label {
       display: inline-flex;
@@ -89,9 +101,16 @@ import { orderComponents, topComponents } from '../../core/accumulation-logic';
       text-transform: uppercase;
       letter-spacing: 0.06em;
     }
-    .chart-wrap {
-      height: 240px;
-      margin-bottom: 18px;
+    .note {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 0 0 12px;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+    }
+    .note.warn {
+      color: var(--btc-orange);
     }
     .list {
       display: flex;
@@ -100,8 +119,8 @@ import { orderComponents, topComponents } from '../../core/accumulation-logic';
     }
     .row {
       display: grid;
-      grid-template-columns: auto 1fr minmax(70px, 140px) 34px auto;
-      gap: 10px;
+      grid-template-columns: auto minmax(0, 1fr) minmax(90px, 220px) 40px auto;
+      gap: 12px;
       align-items: center;
       padding: 7px 10px;
       border-radius: 10px;
@@ -111,6 +130,9 @@ import { orderComponents, topComponents } from '../../core/accumulation-logic';
     .row.strong {
       background: rgba(148, 163, 184, 0.09);
       border-left-color: var(--zone-high);
+    }
+    .row.missing {
+      opacity: 0.55;
     }
     .dot {
       width: 10px;
@@ -122,9 +144,12 @@ import { orderComponents, topComponents } from '../../core/accumulation-logic';
       align-items: center;
       gap: 8px;
       font-size: 0.92rem;
-      white-space: nowrap;
+      min-width: 0;
+    }
+    .name > :first-child {
       overflow: hidden;
       text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .tag {
       font-size: 0.7rem;
@@ -135,6 +160,7 @@ import { orderComponents, topComponents } from '../../core/accumulation-logic';
       white-space: nowrap;
     }
     .mini-bar {
+      display: block;
       height: 8px;
       border-radius: 999px;
       background: rgba(148, 163, 184, 0.15);
@@ -157,7 +183,7 @@ import { orderComponents, topComponents } from '../../core/accumulation-logic';
     }
     @media (max-width: 560px) {
       .row {
-        grid-template-columns: auto 1fr 34px;
+        grid-template-columns: auto minmax(0, 1fr) 40px;
       }
       .mini-bar,
       .weight {
@@ -168,63 +194,21 @@ import { orderComponents, topComponents } from '../../core/accumulation-logic';
 })
 export class ComponentsCardComponent {
   readonly report = input.required<ScoreSnapshot>();
+  readonly config = input.required<ApiConfig>();
 
-  readonly components = computed<ReportComponent[]>(() =>
-    orderComponents(this.report().components),
+  readonly all = computed<ComponentView[]>(() =>
+    buildComponents(this.config().components, this.report().components),
   );
 
-  readonly top = computed<ReportComponent[]>(() => topComponents(this.report().components, 3));
+  readonly components = computed<ComponentView[]>(() => orderComponents(this.all()));
 
-  readonly chartData = computed<ChartConfiguration<'bar'>['data']>(() => {
-    const items = this.components();
-    return {
-      labels: items.map((c) => c.label),
-      datasets: [
-        {
-          data: items.map((c) => c.value),
-          backgroundColor: items.map((_, i) => this.barColor(i)),
-          borderColor: 'transparent',
-          borderRadius: 6,
-          barThickness: 16,
-          maxBarThickness: 18,
-        },
-      ],
-    };
-  });
+  readonly top = computed<ComponentView[]>(() => topComponents(this.all(), 3));
 
-  readonly chartOptions: ChartConfiguration<'bar'>['options'] = {
-    indexAxis: 'y',
-    responsive: true,
-    maintainAspectRatio: false,
-    animation: { duration: 500 },
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        backgroundColor: 'rgba(7, 11, 20, 0.92)',
-        borderColor: 'rgba(148, 163, 184, 0.25)',
-        borderWidth: 1,
-        padding: 10,
-        callbacks: {
-          label: (ctx: TooltipItem<'bar'>) => {
-            const item = this.components()[ctx.dataIndex];
-            return ` ${item.value.toFixed(1)} / 100 · peso ${(item.weight * 100).toFixed(0)}%`;
-          },
-        },
-      },
-    },
-    scales: {
-      x: {
-        min: 0,
-        max: 100,
-        grid: { color: 'rgba(148, 163, 184, 0.1)' },
-        ticks: { color: '#94a3b8' },
-      },
-      y: {
-        grid: { display: false },
-        ticks: { color: '#cbd5e1', font: { size: 12 } },
-      },
-    },
-  };
+  readonly missing = computed(() => this.all().filter((c) => c.value == null).length);
+
+  fmt(value: number | null): string {
+    return value == null ? '—' : String(Math.round(value));
+  }
 
   barColor(index: number): string {
     return index === 0 ? '#22c55e' : index === 1 ? '#4ade80' : index === 2 ? '#86efac' : '#334155';

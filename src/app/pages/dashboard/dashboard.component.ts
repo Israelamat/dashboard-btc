@@ -8,7 +8,6 @@ import {
 } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import { catchError, EMPTY, finalize } from 'rxjs';
 
@@ -66,7 +65,6 @@ function nowStamp(): string {
   imports: [
     MatCardModule,
     MatButtonModule,
-    MatProgressSpinnerModule,
     MatIconModule,
     ScoreGaugeComponent,
     BuyPanelComponent,
@@ -76,13 +74,18 @@ function nowStamp(): string {
   template: `
     <div class="page">
       @if (isLoading()) {
-        <mat-card class="state">
-          <mat-spinner diameter="46"></mat-spinner>
-          <p>Analizando señales de mercado…</p>
-        </mat-card>
+        <div class="skeleton" aria-busy="true" aria-live="polite">
+          <div class="sk-row">
+            <mat-card class="sk-card sk-hero"></mat-card>
+            <mat-card class="sk-card sk-side"></mat-card>
+          </div>
+          <mat-card class="sk-card sk-block"></mat-card>
+          <mat-card class="sk-card sk-block"></mat-card>
+        </div>
       } @else if (errorMessage()) {
         <mat-card class="state error">
-          <mat-icon color="warn">error_outline</mat-icon>
+          <mat-icon color="warn">cloud_off</mat-icon>
+          <h2>No se pudo cargar el dashboard</h2>
           <p>{{ errorMessage() }}</p>
           <button mat-flat-button color="primary" (click)="retry()">
             <mat-icon inline>refresh</mat-icon>
@@ -145,7 +148,7 @@ function nowStamp(): string {
             <app-buy-panel [zone]="zoneInfo()" />
           </div>
 
-          <app-components-card [report]="r" />
+          <app-components-card [report]="r" [config]="d.config" />
           <app-metrics-grid [report]="r" />
 
           <p class="generated num">Generado {{ d.generated_at }} · {{ d.health.status }}</p>
@@ -169,7 +172,7 @@ function nowStamp(): string {
     .page {
       max-width: 1180px;
       margin-inline: auto;
-      padding: 24px;
+      padding: 24px 24px 48px;
       display: flex;
       flex-direction: column;
       gap: 20px;
@@ -183,6 +186,11 @@ function nowStamp(): string {
       text-align: center;
       color: var(--text-secondary);
     }
+    .state h2 {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
     .state p {
       margin: 0;
       max-width: 520px;
@@ -192,6 +200,47 @@ function nowStamp(): string {
       font-size: 44px;
       width: 44px;
       height: 44px;
+    }
+    .skeleton {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .sk-row {
+      display: grid;
+      grid-template-columns: minmax(0, 5fr) minmax(0, 4fr);
+      gap: 20px;
+    }
+    .sk-card {
+      position: relative;
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+    .sk-hero,
+    .sk-side {
+      height: 360px;
+    }
+    .sk-block {
+      height: 220px;
+    }
+    .sk-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      transform: translateX(-100%);
+      background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.12), transparent);
+      animation: shimmer 1.4s infinite;
+    }
+    @keyframes shimmer {
+      to {
+        transform: translateX(100%);
+      }
+    }
+    @media (max-width: 900px) {
+      .sk-row {
+        grid-template-columns: 1fr;
+      }
     }
     .summary-row {
       display: grid;
